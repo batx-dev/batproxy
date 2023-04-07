@@ -11,5 +11,13 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+# IDE local setting
+.idea
+.vscode
+.DS_Store
+
+# Dev config file
+.batproxy
+
 # Dependency directories (remove the comment below to include it)
 # vendor/
