@@ -20,3 +20,5 @@ proxies:
     # reverse proxy http server port
     port: 18880
 ```
+* Run program by use `./batproxy ./.batproxy/batproxy.yaml`
+
