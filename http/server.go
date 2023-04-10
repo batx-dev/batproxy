@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/batx-dev/batproxy/logger"
+	"github.com/batx-dev/batproxy/memo"
 	"github.com/batx-dev/batproxy/proxy"
 	"github.com/batx-dev/batproxy/ssh"
 )
@@ -22,6 +23,8 @@ type Server struct {
 	transports map[string]func(ctx context.Context, network, address string) (net.Conn, error)
 
 	batProxy *proxy.BatProxy
+
+	memo *memo.Memo[key, *ssh.Ssh]
 }
 
 func NewServer(addr string, batProxy *proxy.BatProxy, logger logger.Logger) (*Server, error) {
@@ -41,13 +44,13 @@ func NewServer(addr string, batProxy *proxy.BatProxy, logger logger.Logger) (*Se
 		}
 
 		transports[p.UUID] = s.DialContext
-
 	}
 
 	return &Server{
 		Addr:       addr,
 		transports: transports,
 		batProxy:   batProxy,
+		memo:       memo.New(dialFunc(logger)),
 	}, nil
 }
 
@@ -62,17 +65,23 @@ func (s *Server) proxy(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) NewProxy(req *http.Request) (*httputil.ReverseProxy, error) {
 	uuid := strings.Split(req.Host, ":")[0]
-	dcf, ok := s.transports[uuid]
-	if !ok {
-		panic(uuid)
-	}
 	target := ""
+	k := key{}
 	for _, p := range s.batProxy.Proxies {
 		if uuid == p.UUID {
 			target = p.Node + ":" + strconv.Itoa(int(p.Port))
+			k.user = p.User
+			k.host = p.Host
+			k.password = p.Password
+			k.identityFile = p.IdentityFile
 			break
 		}
 
+	}
+
+	sc, err := s.memo.Get(context.Background(), k)
+	if err != nil {
+		return nil, err
 	}
 
 	target = "http" + "://" + target
@@ -83,7 +92,7 @@ func (s *Server) NewProxy(req *http.Request) (*httputil.ReverseProxy, error) {
 
 	rp := httputil.NewSingleHostReverseProxy(parse)
 	rp.Transport = &http.Transport{
-		DialContext: dcf,
+		DialContext: sc.DialContext,
 	}
 	return rp, nil
 }
@@ -96,7 +105,12 @@ func (s *Server) Run() error {
 
 	http.HandleFunc("/", s.proxy)
 
-	go http.Serve(listen, nil)
+	go func() {
+		err := http.Serve(listen, nil)
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	return nil
 }
