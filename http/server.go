@@ -2,9 +2,11 @@ package http
 
 import (
 	"context"
-	"io"
 	"net"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/batx-dev/batproxy/logger"
@@ -50,35 +52,40 @@ func NewServer(addr string, batProxy *proxy.BatProxy, logger logger.Logger) (*Se
 }
 
 func (s *Server) proxy(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
-	client := s.newClient(strings.Split(req.Host, ":")[0])
-
-	request, err := client.newRequest(ctx, req.Method, req.URL.String(), req.Body)
+	reverseProxy, err := s.NewProxy(req)
 	if err != nil {
 		Error(w, req, err)
 		return
 	}
-	request.Header = req.Header
+	reverseProxy.ServeHTTP(w, req)
+}
 
-	res, err := client.Do(request)
+func (s *Server) NewProxy(req *http.Request) (*httputil.ReverseProxy, error) {
+	uuid := strings.Split(req.Host, ":")[0]
+	dcf, ok := s.transports[uuid]
+	if !ok {
+		panic(uuid)
+	}
+	target := ""
+	for _, p := range s.batProxy.Proxies {
+		if uuid == p.UUID {
+			target = p.Node + ":" + strconv.Itoa(int(p.Port))
+			break
+		}
+
+	}
+
+	target = "http" + "://" + target
+	parse, err := url.Parse(target)
 	if err != nil {
-		Error(w, req, err)
-		return
-	}
-	defer res.Body.Close()
-
-	w.WriteHeader(res.StatusCode)
-
-	content, err := io.ReadAll(res.Body)
-	if err != nil {
-		Error(w, req, err)
-		return
+		return nil, err
 	}
 
-	if _, err := w.Write(content); err != nil {
-		Error(w, req, err)
-		return
+	rp := httputil.NewSingleHostReverseProxy(parse)
+	rp.Transport = &http.Transport{
+		DialContext: dcf,
 	}
+	return rp, nil
 }
 
 func (s *Server) Run() error {

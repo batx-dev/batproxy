@@ -182,6 +182,10 @@ func (c *Client) Dial(ctx context.Context) error {
 }
 
 func (c *Client) dialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	if c.Conn != nil {
+		return c.Conn.Dial(network, address)
+	}
+
 	if err := c.Validate(); err != nil {
 		return nil, err
 	}
@@ -240,6 +244,7 @@ func (c *Client) dialContext(ctx context.Context, network, address string) (net.
 			}
 		}
 		tempDelay = 0
+		c.Conn = conn
 
 		return conn.Dial(network, address)
 	}
