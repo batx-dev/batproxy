@@ -19,9 +19,16 @@ func main() {
 		Name:                   "batproxy",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:    "listen",
-				Usage:   "The listen address of batproxy",
+				Name:    "reverse-listen",
+				Usage:   "The reverse proxy http server listen address",
 				Value:   ":8888",
+				Aliases: []string{"r"},
+				EnvVars: []string{"BATPROXY_REVERSE_LISTEN"},
+			},
+			&cli.StringFlag{
+				Name:    "listen",
+				Usage:   "The manager proxy listen address",
+				Value:   ":18888",
 				Aliases: []string{"l"},
 				EnvVars: []string{"BATPROXY_LISTEN"},
 			},
@@ -47,15 +54,16 @@ func Run(cCtx *cli.Context) error {
 	signal.Notify(c, os.Interrupt)
 	go func() { <-c; cancel() }()
 
-	l := logger.NewLogger(int8(2), "console", zapcore.ISO8601TimeEncoder)
+	logBuilder := logger.NewLogger(int8(2), "console", zapcore.ISO8601TimeEncoder)
 
-	ll := l.Build().WithName("main")
+	ll := logBuilder.Build().WithName("main")
 
-	listen := cCtx.String("listen")
+	rl := cCtx.String("reverse-listen")
+	l := cCtx.String("listen")
 
 	dsn := cCtx.String("dsn")
 
-	server, err := http.NewServer(listen, l)
+	server, err := http.NewServer(rl, l, logBuilder)
 	if err != nil {
 		return err
 	}
@@ -69,11 +77,12 @@ func Run(cCtx *cli.Context) error {
 
 	server.ProxyService = psvc
 
-	if err := server.Run(); err != nil {
+	if err := server.Open(); err != nil {
 		return err
 	}
 
-	ll.Info("main", "listen", listen)
+	ll.Info("main", "reverse-listen", rl)
+	ll.Info("main", "listen", l)
 
 	<-ctx.Done()
 

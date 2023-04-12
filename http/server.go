@@ -2,114 +2,106 @@ package http
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
-	"strconv"
-	"strings"
+	"time"
 
 	"github.com/batx-dev/batproxy"
 	"github.com/batx-dev/batproxy/logger"
 	"github.com/batx-dev/batproxy/memo"
 	"github.com/batx-dev/batproxy/ssh"
+	"github.com/emicklei/go-restful/v3"
+	"github.com/go-logr/logr"
 )
 
-type Server struct {
-	ln net.Listener
+// ShutdownTimeout is the time given for outstanding requests to finish before shutdown.
+const ShutdownTimeout = 1 * time.Second
 
+type Server struct {
 	memo *memo.Memo[key, *ssh.Ssh]
 
-	Addr string
+	logger logr.Logger
+
+	managerListen net.Listener
+	managerServer *http.Server
+	managerAddr   string
+
+	reverseProxyListen net.Listener
+	reverseProxyServer *http.Server
+	reverseProxyAddr   string
 
 	ProxyService batproxy.ProxyService
 }
 
-func NewServer(addr string, logger logger.Logger) (*Server, error) {
+func NewServer(reverseProxyAddr, managerAddr string, logger logger.Logger) (*Server, error) {
+
 	return &Server{
-		Addr: addr,
-		memo: memo.New(sshFunc(logger)),
+		memo:             memo.New(sshFunc(logger)),
+		logger:           logger.Build().WithName("http"),
+		managerAddr:      managerAddr,
+		reverseProxyAddr: reverseProxyAddr,
 	}, nil
 }
 
-func (s *Server) proxy(w http.ResponseWriter, req *http.Request) {
-	reverseProxy, err := s.NewProxy(req)
-	if err != nil {
-		Error(w, req, err)
-		return
-	}
-	reverseProxy.ServeHTTP(w, req)
-}
+func (s *Server) Open() (err error) {
+	// listen reverse reverseProxy address
+	{
+		s.reverseProxyServer = &http.Server{}
+		handleFunc := http.HandlerFunc(s.reverseProxy)
+		s.reverseProxyServer.Handler = handleFunc
 
-func (s *Server) NewProxy(req *http.Request) (*httputil.ReverseProxy, error) {
-	ctx := context.Background()
-	uuid := strings.Split(req.Host, ":")[0]
-
-	ps, err := s.ProxyService.ListProxies(ctx, batproxy.ListProxiesOptions{
-		UUID: uuid,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if len(ps.Proxies) == 0 {
-		return nil, fmt.Errorf("proxy: can not find proxy rule")
-	}
-
-	p := ps.Proxies[0]
-
-	k := key{
-		User:       p.User,
-		Host:       p.Host,
-		PrivateKey: p.PrivateKey,
-		Passphrase: p.Passphrase,
-		Password:   p.Password,
-	}
-
-	target := p.Node + ":" + strconv.Itoa(int(p.Port))
-
-	sc, err := s.memo.Get(context.Background(), k)
-	if err != nil {
-		return nil, err
-	}
-
-	target = "http" + "://" + target
-	parse, err := url.Parse(target)
-	if err != nil {
-		return nil, err
-	}
-
-	rp := httputil.NewSingleHostReverseProxy(parse)
-	rp.Transport = &http.Transport{
-		DialContext: sc.DialContext,
-	}
-	return rp, nil
-}
-
-func (s *Server) Run() error {
-	listen, err := net.Listen("tcp", s.Addr)
-	if err != nil {
-		return err
-	}
-
-	s.ln = listen
-
-	http.HandleFunc("/", s.proxy)
-
-	go func() {
-		err := http.Serve(listen, nil)
-		if err != nil {
-			panic(err)
+		if s.reverseProxyListen, err = net.Listen("tcp", s.reverseProxyAddr); err != nil {
+			return err
 		}
-	}()
+
+		go func() {
+			if err := s.reverseProxyServer.Serve(s.reverseProxyListen); err != nil {
+				panic(err)
+			}
+		}()
+	}
+
+	// listen manager reverseProxy address
+	{
+		c := restful.NewContainer()
+		corev1beta1 := new(restful.WebService)
+		corev1beta1.Path("/api/v1beta1").
+			Consumes(restful.MIME_JSON).
+			Produces(restful.MIME_JSON)
+
+		s.proxyService(corev1beta1)
+
+		c.Add(corev1beta1)
+
+		s.managerServer = &http.Server{}
+		s.managerServer.Handler = c
+
+		if s.managerListen, err = net.Listen("tcp", s.managerAddr); err != nil {
+			return err
+		}
+
+		go func() {
+			err := s.managerServer.Serve(s.managerListen)
+			if err != nil {
+				panic(err)
+			}
+		}()
+	}
 
 	return nil
 }
 
-func (s *Server) Stop() {
-	err := s.ln.Close()
-	if err != nil {
-		return
+func (s *Server) Close() error {
+	ctx, cancel := context.WithTimeout(context.Background(), ShutdownTimeout)
+	defer cancel()
+
+	if err := s.reverseProxyServer.Shutdown(ctx); err != nil {
+		return err
 	}
+
+	if err := s.managerServer.Shutdown(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }

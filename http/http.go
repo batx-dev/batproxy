@@ -3,6 +3,13 @@ package http
 import (
 	"fmt"
 	"net/http"
+
+	"github.com/gorilla/schema"
+)
+
+var (
+	decoder = schema.NewDecoder()
+	encoder = schema.NewEncoder()
 )
 
 // Error prints & optionally logs an error message.

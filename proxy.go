@@ -7,9 +7,10 @@ import (
 )
 
 type Proxy struct {
-	// UUID Unique proxy id.
+	// ID Unique proxy id.
+	// Format: <uuid><.suffix>
 	// Output only.
-	UUID string `json:"uuid"`
+	ID string `json:"proxy_id"`
 
 	// User Over SSH login name.
 	// Required.
@@ -49,26 +50,26 @@ type Proxy struct {
 }
 
 func (p *Proxy) Validate() error {
+	if p.User == "" || p.Host == "" {
+		return fmt.Errorf("invalid ssh format user@host: %s@%s", p.User, p.Host)
+	}
+
 	if p.PrivateKey == "" && p.Password == "" {
 		return fmt.Errorf("ssh auth required one of [passowrd, private_key]")
+	}
+
+	if p.Node == "" || p.Port == 0 {
+		return fmt.Errorf("invalid proxy %s:%s", p.Node, p.Port)
 	}
 
 	return nil
 }
 
-func (p *Proxy) String() string {
-	fmt.Printf("111: %+v\n", 111)
-	return fmt.Sprintf("%s@%s", p.User, p.Host)
-}
-
-func (p *Proxy) Equal(other *Proxy) int {
-	if p.Host == other.Host && p.User == other.User {
-		return 0
-	}
-	fmt.Printf("p: %+v\n", p)
-	fmt.Printf("other: %+v\n", other)
-
-	return -1
+type CreateProxyOptions struct {
+	// Suffix will append after uuid
+	// Format: <uuid><.suffix>
+	// Optional.
+	Suffix string `schema:"suffix,omitempty"`
 }
 
 type ListProxiesPage struct {
@@ -77,16 +78,21 @@ type ListProxiesPage struct {
 }
 
 type ListProxiesOptions struct {
-	UUID string
+	// ProxyID unique proxy rule id.
+	ProxyID string `schema:"proxy_id,omitempty"`
+
 	// PageSize sets the maximum number of users to be returned.
 	// 0 means no maximum; driver implementations should choose a reasonable
 	// max. It is guaranteed to be >= 0.
 	PageSize int `schema:"page_size,omitempty"`
+
 	// PageToken may be filled in with the NextPageToken from a previous
 	// ListUsers call.
 	PageToken string `schema:"page_token,omitempty"`
 }
 
 type ProxyService interface {
+	CreateProxy(ctx context.Context, proxy *Proxy, opts CreateProxyOptions) error
 	ListProxies(ctx context.Context, opts ListProxiesOptions) (*ListProxiesPage, error)
+	DeleteProxy(ctx context.Context, uuid string) error
 }
