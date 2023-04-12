@@ -2,36 +2,42 @@ package ssh
 
 import (
 	"context"
-	"os"
+	"fmt"
 	"time"
 
 	"github.com/batx-dev/batproxy/memo"
 	"golang.org/x/crypto/ssh"
 )
 
-func dialFunc() memo.Func[*Client, *ssh.Client] {
-	return func(ctx context.Context, c *Client, cleanup func()) (*ssh.Client, error) {
+func dialFunc(c *Client) memo.Func[key, *ssh.Client] {
+	return func(ctx context.Context, key key, cleanup func()) (*ssh.Client, error) {
 		if err := c.Validate(); err != nil {
 			return nil, err
 		}
 
 		var auth []ssh.AuthMethod
-		if c.IdentityFile != "" {
-			key, err := os.ReadFile(c.IdentityFile)
-			if err != nil {
-				return nil, err
+
+		if c.PrivateKey != "" {
+			var (
+				err    error
+				signer ssh.Signer
+			)
+			if c.Passphrase != "" {
+				signer, err = ssh.ParsePrivateKeyWithPassphrase([]byte(c.PrivateKey), []byte(c.Passphrase))
+			} else {
+				signer, err = ssh.ParsePrivateKey([]byte(c.PrivateKey))
 			}
-			singer, err := ssh.ParsePrivateKey(key)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("parse private key: %v", err)
+			} else {
+				auth = append(auth, ssh.PublicKeys(signer))
 			}
-			auth = append(auth, ssh.PublicKeys(singer))
 		}
 		if c.Password != "" {
 			auth = append(auth, ssh.Password(c.Password))
 		}
 
-		config := &ssh.ClientConfig{
+		cfg := &ssh.ClientConfig{
 			User:            c.User,
 			Auth:            auth,
 			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
@@ -41,7 +47,7 @@ func dialFunc() memo.Func[*Client, *ssh.Client] {
 		// establish connect with remote host
 		client, err := DialTimeout("tcp",
 			c.Host,
-			config,
+			cfg,
 			c.ServerAliveInterval*time.Duration(c.ServerAliveCountMax),
 		)
 		if err != nil {
@@ -53,16 +59,16 @@ func dialFunc() memo.Func[*Client, *ssh.Client] {
 			go func() {
 				time.Sleep(15 * time.Second)
 				cleanup()
-				c.Logger.Error(err, "cleanup ssh cache", "key", c)
+				c.Logger.Error(err, "cleanup ssh cache", "key", key)
 			}()
 			return nil, err
 		}
 
-		c.Logger.V(2).Info("wait ssh to close", "key", c)
+		c.Logger.V(2).Info("wait ssh to close", "key", key)
 		go func() {
 			err := client.Wait()
 			cleanup()
-			c.Logger.Error(err, "wait ssh to close and cleanup", "key", c)
+			c.Logger.Error(err, "wait ssh to close and cleanup", "key", key)
 		}()
 
 		return client, nil

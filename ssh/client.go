@@ -3,8 +3,6 @@ package ssh
 import (
 	"context"
 	"fmt"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -12,57 +10,46 @@ import (
 )
 
 type Client struct {
-	// Host is the ssh server to connect to.
-	Host string `yaml:"host"`
-
-	// User is the user to authenticate as.
+	// User Authenticate as.
 	User string `yaml:"user"`
 
-	// Password is the password to use for authentication.
+	// Host SSH server to connect to.
+	Host string `yaml:"host"`
+
+	// Password Used for SSH authentication.
 	Password string `yaml:"password,omitempty"`
 
-	// IdentityFile is the path to the private key file to use for authentication.
-	IdentityFile string `yaml:"identity_file,omitempty"`
+	// PrivateKey Used for SSH authentication.
+	PrivateKey string `yaml:"private_key,omitempty"`
 
-	// LogLevel is the log level to use for logging
+	// Passphrase Private key passphrase.
+	Passphrase string `yaml:"passphrase,omitempty"`
+
+	// LogLevel Level of logging print.
 	LogLevel int8 `yaml:"log_level,omitempty"`
 
-	// LogEncoding is the log output format
+	// LogEncoding Log output format.
 	LogEncoding string `yaml:"log_encoding"`
 
-	// RetryMin is the minimum time to retry connecting to the ssh server
+	// RetryMin Minimum time to retry connecting to the ssh server
 	RetryMin time.Duration `yaml:"retry_min,omitempty"`
 
-	// RetryMax is the maximum time to retry connecting to the ssh server
+	// RetryMax Maximum time to retry connecting to the ssh server
 	RetryMax time.Duration `yaml:"retry_max,omitempty"`
 
-	// ServerAliveInterval is the interval to use for the ssh server's keepalive
+	// ServerAliveInterval Interval to use for the ssh server's keepalive
 	ServerAliveInterval time.Duration `yaml:"server_alive_interval"`
 
-	// ServerAliveCountMax is the maximum number of keepalive packets to send
+	// ServerAliveCountMax Maximum number of keepalive packets to send
 	ServerAliveCountMax uint32 `yaml:"server_alive_count_max"`
 
-	// Logger is the logger to use for logging
+	// Logger Used for logging
 	Logger logr.Logger
 }
 
-func (c *Client) String() string {
-	return fmt.Sprintf("%s@%s", c.User, c.Host)
-}
-
 func (c *Client) Validate() error {
-	if c.IdentityFile == "" && c.Password == "" {
-		return fmt.Errorf("one of [password, identity_file] required")
-	}
-
-	if c.IdentityFile != "" {
-		if strings.HasPrefix(c.IdentityFile, "~") {
-			homePath, err := os.UserHomeDir()
-			if err != nil {
-				return err
-			}
-			c.IdentityFile = strings.Replace(c.IdentityFile, "~", homePath, 1)
-		}
+	if c.PrivateKey == "" && c.Password == "" {
+		return fmt.Errorf("one of [password, private_key] required")
 	}
 
 	if c.RetryMin <= 0 {

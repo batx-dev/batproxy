@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -9,48 +10,26 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/batx-dev/batproxy"
 	"github.com/batx-dev/batproxy/logger"
 	"github.com/batx-dev/batproxy/memo"
-	"github.com/batx-dev/batproxy/proxy"
 	"github.com/batx-dev/batproxy/ssh"
 )
 
 type Server struct {
 	ln net.Listener
 
+	memo *memo.Memo[key, *ssh.Ssh]
+
 	Addr string
 
-	transports map[string]func(ctx context.Context, network, address string) (net.Conn, error)
-
-	batProxy *proxy.BatProxy
-
-	memo *memo.Memo[key, *ssh.Ssh]
+	ProxyService batproxy.ProxyService
 }
 
-func NewServer(addr string, batProxy *proxy.BatProxy, logger logger.Logger) (*Server, error) {
-	l := logger.Build().WithName("ssh")
-	transports := make(map[string]func(ctx context.Context, network, address string) (net.Conn, error), 10)
-	for _, p := range batProxy.Proxies {
-		client := &ssh.Client{
-			Host:         p.Host,
-			User:         p.User,
-			IdentityFile: p.IdentityFile,
-			Password:     p.Password,
-			Logger:       l,
-		}
-
-		s := &ssh.Ssh{
-			Client: client,
-		}
-
-		transports[p.UUID] = s.DialContext
-	}
-
+func NewServer(addr string, logger logger.Logger) (*Server, error) {
 	return &Server{
-		Addr:       addr,
-		transports: transports,
-		batProxy:   batProxy,
-		memo:       memo.New(dialFunc(logger)),
+		Addr: addr,
+		memo: memo.New(sshFunc(logger)),
 	}, nil
 }
 
@@ -64,20 +43,31 @@ func (s *Server) proxy(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) NewProxy(req *http.Request) (*httputil.ReverseProxy, error) {
+	ctx := context.Background()
 	uuid := strings.Split(req.Host, ":")[0]
-	target := ""
-	k := key{}
-	for _, p := range s.batProxy.Proxies {
-		if uuid == p.UUID {
-			target = p.Node + ":" + strconv.Itoa(int(p.Port))
-			k.user = p.User
-			k.host = p.Host
-			k.password = p.Password
-			k.identityFile = p.IdentityFile
-			break
-		}
 
+	ps, err := s.ProxyService.ListProxies(ctx, batproxy.ListProxiesOptions{
+		UUID: uuid,
+	})
+	if err != nil {
+		return nil, err
 	}
+
+	if len(ps.Proxies) == 0 {
+		return nil, fmt.Errorf("proxy: can not find proxy rule")
+	}
+
+	p := ps.Proxies[0]
+
+	k := key{
+		User:       p.User,
+		Host:       p.Host,
+		PrivateKey: p.PrivateKey,
+		Passphrase: p.Passphrase,
+		Password:   p.Password,
+	}
+
+	target := p.Node + ":" + strconv.Itoa(int(p.Port))
 
 	sc, err := s.memo.Get(context.Background(), k)
 	if err != nil {
@@ -102,6 +92,8 @@ func (s *Server) Run() error {
 	if err != nil {
 		return err
 	}
+
+	s.ln = listen
 
 	http.HandleFunc("/", s.proxy)
 

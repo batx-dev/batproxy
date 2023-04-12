@@ -10,7 +10,7 @@ import (
 )
 
 type Ssh struct {
-	memo *memo.Memo[*Client, *ssh.Client]
+	memo *memo.Memo[key, *ssh.Client]
 
 	Client *Client `yaml:"client"`
 
@@ -29,12 +29,15 @@ func New(logger logger.Logger, client *Client) *Ssh {
 
 	return &Ssh{
 		Client: client,
-		memo:   memo.New(dialFunc()),
+		memo:   memo.New(dialFunc(client)),
 	}
 }
 
 func (s *Ssh) DialContext(ctx context.Context, network string, address string) (net.Conn, error) {
-	sc, err := s.memo.Get(ctx, s.Client)
+	sc, err := s.memo.Get(ctx, key{
+		User: s.Client.User,
+		Host: s.Client.Host,
+	})
 	if err != nil {
 		return nil, err
 	}
