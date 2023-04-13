@@ -3,6 +3,7 @@ package ssh
 import (
 	"context"
 	"net"
+	"time"
 
 	"github.com/batx-dev/batproxy/logger"
 	"github.com/batx-dev/batproxy/memo"
@@ -41,5 +42,6 @@ func (s *Ssh) DialContext(ctx context.Context, network string, address string) (
 	if err != nil {
 		return nil, err
 	}
+	go s.Client.keepAlive(ctx, sc.Conn, time.Second*15)
 	return sc.Dial(network, address)
 }

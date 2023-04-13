@@ -1,7 +1,6 @@
 package http
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -33,7 +32,7 @@ func (s *Server) newReverseProxy(req *http.Request) (*httputil.ReverseProxy, err
 	}
 
 	if len(ps.Proxies) == 0 {
-		return nil, fmt.Errorf("reverseProxy: can not find reverseProxy rule")
+		return nil, batproxy.Errorf(batproxy.ENOTFOUND, "invalid proxy")
 	}
 
 	p := ps.Proxies[0]

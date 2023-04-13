@@ -43,13 +43,13 @@ func (s *Server) proxyService(ws *restful.WebService) {
 func (s *Server) createProxy(req *restful.Request, res *restful.Response) {
 	opts := batproxy.CreateProxyOptions{}
 	if err := decoder.Decode(&opts, req.Request.URL.Query()); err != nil {
-		res.WriteHeaderAndEntity(http.StatusBadRequest, err)
+		Error(res.ResponseWriter, req.Request, err)
 		return
 	}
 
 	proxy := &batproxy.Proxy{}
 	if err := req.ReadEntity(proxy); err != nil {
-		res.WriteHeaderAndEntity(http.StatusBadRequest, err)
+		Error(res.ResponseWriter, req.Request, err)
 		return
 	}
 
@@ -58,30 +58,33 @@ func (s *Server) createProxy(req *restful.Request, res *restful.Response) {
 		proxy,
 		opts,
 	); err != nil {
-		res.WriteHeaderAndEntity(http.StatusBadRequest, err)
+		Error(res.ResponseWriter, req.Request, err)
 		return
 	}
 
-	res.WriteHeaderAndEntity(http.StatusCreated, proxy)
-
+	err := res.WriteHeaderAndEntity(http.StatusCreated, proxy)
+	if err != nil {
+		s.logger.Error(err, "req", req.Request.URL)
+	}
 }
 
 func (s *Server) listProxies(req *restful.Request, res *restful.Response) {
 	opts := batproxy.ListProxiesOptions{}
 	if err := decoder.Decode(&opts, req.Request.URL.Query()); err != nil {
-		res.WriteHeaderAndEntity(http.StatusBadRequest, err)
+		Error(res.ResponseWriter, req.Request, err)
 		return
 	}
 
-	page, err := s.ProxyService.ListProxies(
-		req.Request.Context(),
-		opts)
+	page, err := s.ProxyService.ListProxies(req.Request.Context(), opts)
 	if err != nil {
-		res.WriteHeaderAndEntity(http.StatusBadRequest, err)
+		Error(res.ResponseWriter, req.Request, err)
 		return
 	}
 
-	res.WriteEntity(page)
+	err = res.WriteEntity(page)
+	if err != nil {
+		s.logger.Error(err, "req", req.Request.URL)
+	}
 }
 
 func (s *Server) updateProxy(req *restful.Request, res *restful.Response) {
@@ -89,11 +92,8 @@ func (s *Server) updateProxy(req *restful.Request, res *restful.Response) {
 }
 
 func (s *Server) deleteProxy(req *restful.Request, res *restful.Response) {
-	if err := s.ProxyService.DeleteProxy(
-		req.Request.Context(),
-		req.PathParameter("proxy_id"),
-	); err != nil {
-		res.WriteHeaderAndEntity(http.StatusBadRequest, err)
+	if err := s.ProxyService.DeleteProxy(req.Request.Context(), req.PathParameter("proxy_id")); err != nil {
+		Error(res.ResponseWriter, req.Request, err)
 		return
 	}
 

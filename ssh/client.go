@@ -47,6 +47,10 @@ type Client struct {
 	Logger logr.Logger
 }
 
+func (c *Client) String() string {
+	return fmt.Sprintf("%s@%s", c.User, c.Host)
+}
+
 func (c *Client) Validate() error {
 	if c.PrivateKey == "" && c.Password == "" {
 		return fmt.Errorf("one of [password, private_key] required")
@@ -77,20 +81,18 @@ func (c *Client) keepAlive(ctx context.Context, conn ssh.Conn, interval time.Dur
 	for {
 		select {
 		case <-t.C:
-			_, _, err := conn.SendRequest("keepalive@psh.dev", true, nil)
+			_, _, err := conn.SendRequest("keepalive@batproxy.dev", true, nil)
 			if err != nil {
 				c.Logger.Error(err, "keepalive")
 				return
 			}
 			c.Logger.V(2).Info("keepalive",
-				"host", c.Host,
-				"user", c.User,
+				"client", c,
 			)
 		case <-ctx.Done():
 			c.Logger.V(2).Info("keepalive",
 				"status", "exit",
-				"host", c.Host,
-				"user", c.User,
+				"client", c,
 			)
 			return
 		}

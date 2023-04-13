@@ -2,9 +2,9 @@ package ssh
 
 import (
 	"context"
-	"fmt"
 	"time"
 
+	"github.com/batx-dev/batproxy"
 	"github.com/batx-dev/batproxy/memo"
 	"golang.org/x/crypto/ssh"
 )
@@ -12,7 +12,7 @@ import (
 func dialFunc(c *Client) memo.Func[key, *ssh.Client] {
 	return func(ctx context.Context, key key, cleanup func()) (*ssh.Client, error) {
 		if err := c.Validate(); err != nil {
-			return nil, err
+			return nil, batproxy.Errorf(batproxy.EINVALID, "ssh client config: %s", err)
 		}
 
 		var auth []ssh.AuthMethod
@@ -28,7 +28,7 @@ func dialFunc(c *Client) memo.Func[key, *ssh.Client] {
 				signer, err = ssh.ParsePrivateKey([]byte(c.PrivateKey))
 			}
 			if err != nil {
-				return nil, fmt.Errorf("parse private key: %v", err)
+				return nil, batproxy.Errorf(batproxy.EINVALID, "parse private key: %v", err)
 			} else {
 				auth = append(auth, ssh.PublicKeys(signer))
 			}
@@ -53,22 +53,22 @@ func dialFunc(c *Client) memo.Func[key, *ssh.Client] {
 		if err != nil {
 			c.Logger.Error(err, "dial",
 				"status", "fail",
-				"host", c.Host,
-				"user", c.User,
+				"key", key.String(),
 			)
 			go func() {
 				time.Sleep(15 * time.Second)
 				cleanup()
-				c.Logger.Error(err, "cleanup ssh cache", "key", key)
+				c.Logger.Error(err, "cleanup ssh cache", "key", key.String())
 			}()
-			return nil, err
+			return nil, batproxy.Errorf(batproxy.EINTERNAL, "dial to %s", key.String())
 		}
 
-		c.Logger.V(2).Info("wait ssh to close", "key", key)
+		c.Logger.V(2).Info("wait ssh to close", "key", key.String())
+
 		go func() {
 			err := client.Wait()
 			cleanup()
-			c.Logger.Error(err, "wait ssh to close and cleanup", "key", key)
+			c.Logger.Error(err, "wait ssh to close and cleanup", "key", key.String())
 		}()
 
 		return client, nil
