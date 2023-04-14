@@ -3,11 +3,10 @@ package ssh
 import (
 	"context"
 	"net"
-	"time"
 
-	"github.com/batx-dev/batproxy/logger"
 	"github.com/batx-dev/batproxy/memo"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/exp/slog"
 )
 
 type Ssh struct {
@@ -15,21 +14,13 @@ type Ssh struct {
 
 	Client *Client `yaml:"client"`
 
-	Logger logger.Logger
+	Logger *slog.Logger
 }
 
-func New(logger logger.Logger, client *Client) *Ssh {
-	if client.LogLevel != 0 {
-		logger.LogLevel = client.LogLevel
-	}
-	if client.LogEncoding != "" {
-		logger.Encoding = client.LogEncoding
-	}
-
-	client.Logger = logger.Build().WithName("ssh")
-
+func New(logger *slog.Logger, client *Client) *Ssh {
 	return &Ssh{
 		Client: client,
+		Logger: logger,
 		memo:   memo.New(dialFunc(client)),
 	}
 }
@@ -42,6 +33,5 @@ func (s *Ssh) DialContext(ctx context.Context, network string, address string) (
 	if err != nil {
 		return nil, err
 	}
-	go s.Client.keepAlive(ctx, sc.Conn, time.Second*15)
 	return sc.Dial(network, address)
 }

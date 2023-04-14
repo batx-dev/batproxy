@@ -7,11 +7,10 @@ import (
 	"time"
 
 	"github.com/batx-dev/batproxy"
-	"github.com/batx-dev/batproxy/logger"
 	"github.com/batx-dev/batproxy/memo"
 	"github.com/batx-dev/batproxy/ssh"
 	"github.com/emicklei/go-restful/v3"
-	"github.com/go-logr/logr"
+	"golang.org/x/exp/slog"
 )
 
 // ShutdownTimeout is the time given for outstanding requests to finish before shutdown.
@@ -20,7 +19,7 @@ const ShutdownTimeout = 1 * time.Second
 type Server struct {
 	memo *memo.Memo[key, *ssh.Ssh]
 
-	logger logr.Logger
+	logger *slog.Logger
 
 	managerListen net.Listener
 	managerServer *http.Server
@@ -33,11 +32,10 @@ type Server struct {
 	ProxyService batproxy.ProxyService
 }
 
-func NewServer(reverseProxyAddr, managerAddr string, logger logger.Logger) (*Server, error) {
-
+func NewServer(reverseProxyAddr, managerAddr string, logger *slog.Logger) (*Server, error) {
 	return &Server{
 		memo:             memo.New(sshFunc(logger)),
-		logger:           logger.Build().WithName("http"),
+		logger:           logger,
 		managerAddr:      managerAddr,
 		reverseProxyAddr: reverseProxyAddr,
 	}, nil

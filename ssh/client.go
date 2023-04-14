@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-logr/logr"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/exp/slog"
 )
 
 type Client struct {
@@ -44,7 +44,7 @@ type Client struct {
 	ServerAliveCountMax uint32 `yaml:"server_alive_count_max"`
 
 	// Logger Used for logging
-	Logger logr.Logger
+	Logger *slog.Logger
 }
 
 func (c *Client) String() string {
@@ -83,14 +83,14 @@ func (c *Client) keepAlive(ctx context.Context, conn ssh.Conn, interval time.Dur
 		case <-t.C:
 			_, _, err := conn.SendRequest("keepalive@batproxy.dev", true, nil)
 			if err != nil {
-				c.Logger.Error(err, "keepalive")
+				c.Logger.Error("keepalive", "err", err)
 				return
 			}
-			c.Logger.V(2).Info("keepalive",
+			c.Logger.Debug("keepalive",
 				"client", c,
 			)
 		case <-ctx.Done():
-			c.Logger.V(2).Info("keepalive",
+			c.Logger.Debug("keepalive",
 				"status", "exit",
 				"client", c,
 			)

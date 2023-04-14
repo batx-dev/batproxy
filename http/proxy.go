@@ -64,7 +64,7 @@ func (s *Server) createProxy(req *restful.Request, res *restful.Response) {
 
 	err := res.WriteHeaderAndEntity(http.StatusCreated, proxy)
 	if err != nil {
-		s.logger.Error(err, "req", req.Request.URL)
+		s.logger.Error("proxy", "err", err, "req", req.Request.URL)
 	}
 }
 
@@ -83,7 +83,7 @@ func (s *Server) listProxies(req *restful.Request, res *restful.Response) {
 
 	err = res.WriteEntity(page)
 	if err != nil {
-		s.logger.Error(err, "req", req.Request.URL)
+		s.logger.Error("proxy", "err", err, "req", req.Request.URL)
 	}
 }
 

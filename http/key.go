@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/batx-dev/batproxy/logger"
 	"github.com/batx-dev/batproxy/memo"
 	"github.com/batx-dev/batproxy/ssh"
+	"golang.org/x/exp/slog"
 )
 
 type key struct {
@@ -35,7 +35,7 @@ func (k *key) String() string {
 	return fmt.Sprintf("%s@%s", k.User, k.Host)
 }
 
-func sshFunc(logger logger.Logger) memo.Func[key, *ssh.Ssh] {
+func sshFunc(logger *slog.Logger) memo.Func[key, *ssh.Ssh] {
 	return func(ctx context.Context, key key, cleanup func()) (*ssh.Ssh, error) {
 		client := &ssh.Client{
 			User:       key.User,
@@ -43,6 +43,7 @@ func sshFunc(logger logger.Logger) memo.Func[key, *ssh.Ssh] {
 			PrivateKey: key.PrivateKey,
 			Passphrase: key.Passphrase,
 			Password:   key.Password,
+			Logger:     logger,
 		}
 
 		s := ssh.New(logger, client)

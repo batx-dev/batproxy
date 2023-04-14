@@ -51,24 +51,29 @@ func dialFunc(c *Client) memo.Func[key, *ssh.Client] {
 			c.ServerAliveInterval*time.Duration(c.ServerAliveCountMax),
 		)
 		if err != nil {
-			c.Logger.Error(err, "dial",
+			c.Logger.Error("dial",
 				"status", "fail",
 				"key", key.String(),
+				"err", err,
 			)
 			go func() {
 				time.Sleep(15 * time.Second)
 				cleanup()
-				c.Logger.Error(err, "cleanup ssh cache", "key", key.String())
+				c.Logger.Error("dial", "cleanup ssh cache", "key", key.String(), "err", err)
 			}()
 			return nil, batproxy.Errorf(batproxy.EINTERNAL, "dial to %s", key.String())
 		}
 
-		c.Logger.V(2).Info("wait ssh to close", "key", key.String())
+		c.Logger.Info("wait ssh to close", "key", key.String())
+
+		kCtx, cancel := context.WithCancel(context.Background())
+		go c.keepAlive(kCtx, client, time.Second*15)
 
 		go func() {
 			err := client.Wait()
 			cleanup()
-			c.Logger.Error(err, "wait ssh to close and cleanup", "key", key.String())
+			cancel()
+			c.Logger.Error("wait ssh to close and cleanup", "key", key.String(), "err", err)
 		}()
 
 		return client, nil

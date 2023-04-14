@@ -7,10 +7,9 @@ import (
 	"os/signal"
 
 	"github.com/batx-dev/batproxy/http"
-	"github.com/batx-dev/batproxy/logger"
 	"github.com/batx-dev/batproxy/sql"
 	"github.com/urfave/cli/v2"
-	"go.uber.org/zap/zapcore"
+	"golang.org/x/exp/slog"
 )
 
 func main() {
@@ -54,16 +53,17 @@ func Run(cCtx *cli.Context) error {
 	signal.Notify(c, os.Interrupt)
 	go func() { <-c; cancel() }()
 
-	logBuilder := logger.NewLogger(int8(2), "console", zapcore.ISO8601TimeEncoder)
-
-	ll := logBuilder.Build().WithName("main")
+	loggerOption := slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}
+	logger := slog.New(loggerOption.NewTextHandler(os.Stdout))
 
 	rl := cCtx.String("reverse-listen")
 	l := cCtx.String("listen")
 
 	dsn := cCtx.String("dsn")
 
-	server, err := http.NewServer(rl, l, logBuilder)
+	server, err := http.NewServer(rl, l, logger)
 	if err != nil {
 		return err
 	}
@@ -81,8 +81,8 @@ func Run(cCtx *cli.Context) error {
 		return err
 	}
 
-	ll.Info("main", "reverse-listen", rl)
-	ll.Info("main", "listen", l)
+	logger.Info("main", "reverse-listen", rl)
+	logger.Info("main", "listen", l)
 
 	<-ctx.Done()
 

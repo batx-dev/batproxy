@@ -12,6 +12,7 @@ require (
 	github.com/urfave/cli/v2 v2.25.1
 	go.uber.org/zap v1.21.0
 	golang.org/x/crypto v0.7.0
+	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	k8s.io/apimachinery v0.27.0
 )
 
