@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/batx-dev/batproxy"
@@ -53,9 +54,7 @@ func (s *Server) Open() (err error) {
 		}
 
 		go func() {
-			if err := s.reverseProxyServer.Serve(s.reverseProxyListen); err != nil {
-				panic(err)
-			}
+			s.reverseProxyServer.Serve(s.reverseProxyListen)
 		}()
 	}
 
@@ -74,15 +73,17 @@ func (s *Server) Open() (err error) {
 		s.managerServer = &http.Server{}
 		s.managerServer.Handler = c
 
-		if s.managerListen, err = net.Listen("tcp", s.managerAddr); err != nil {
+		listen, err := url.Parse(s.managerAddr)
+		if err != nil {
+			return batproxy.Errorf(batproxy.EINVALID, "manager %s address: %s", s.managerListen, err)
+		}
+
+		if s.managerListen, err = net.Listen(listen.Scheme, listen.Host); err != nil {
 			return err
 		}
 
 		go func() {
-			err := s.managerServer.Serve(s.managerListen)
-			if err != nil {
-				panic(err)
-			}
+			s.managerServer.Serve(s.managerListen)
 		}()
 	}
 

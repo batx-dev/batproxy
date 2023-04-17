@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 
+	"github.com/batx-dev/batproxy"
 	"github.com/batx-dev/batproxy/http"
 	"github.com/batx-dev/batproxy/sql"
 	"github.com/urfave/cli/v2"
@@ -27,9 +30,28 @@ func main() {
 			&cli.StringFlag{
 				Name:    "listen",
 				Usage:   "The manager proxy listen address",
-				Value:   ":18888",
+				Value:   "unix://batproxy.sock",
 				Aliases: []string{"l"},
 				EnvVars: []string{"BATPROXY_LISTEN"},
+				Action: func(c *cli.Context, s string) error {
+					ss := strings.Split(s, "://")
+
+					if len(ss) < 2 {
+						if err := c.Set("listen", fmt.Sprintf("unix://%s", s)); err != nil {
+							return err
+						}
+
+						return nil
+					}
+
+					switch ss[0] {
+					case "unix", "tcp", "udp":
+						return nil
+					default:
+						return batproxy.Errorf(batproxy.EINVALID, "network: %s", ss[0])
+					}
+
+				},
 			},
 			&cli.StringFlag{
 				Name:    "dsn",
@@ -86,5 +108,5 @@ func Run(cCtx *cli.Context) error {
 
 	<-ctx.Done()
 
-	return nil
+	return server.Close()
 }

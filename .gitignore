@@ -19,5 +19,7 @@
 # Dev config file
 .batproxy
 
+# batproxy default listen unix socket
+batproxy.sock
 # Dependency directories (remove the comment below to include it)
 # vendor/
