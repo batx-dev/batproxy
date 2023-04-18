@@ -1,10 +1,14 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
+	"time"
 
 	"github.com/batx-dev/batproxy"
 	"github.com/gorilla/schema"
@@ -74,4 +78,80 @@ func FromErrorStatusCode(code int) string {
 		}
 	}
 	return batproxy.EINTERNAL
+}
+
+// Client represents an HTTP client.
+type Client struct {
+	client *http.Client
+
+	URL string
+}
+
+// NewClient returns a new instance of Client.
+func NewClient(u string) (*Client, error) {
+	c := &Client{
+		client: http.DefaultClient,
+	}
+
+	uu, err := url.Parse(u)
+	if err != nil {
+		return nil, batproxy.Errorf(batproxy.EINVALID, "base url %s: %s", u, err)
+	}
+
+	switch uu.Scheme {
+	case "unix":
+		c.client.Transport = &http.Transport{
+			DialContext: func(ctx context.Context, network string, addr string) (net.Conn, error) {
+				return net.Dial(uu.Scheme, uu.Host)
+			},
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
+
+		c.URL = "http://localhost"
+	case "http", "https":
+		c.URL = u
+	default:
+		return nil, batproxy.Errorf(batproxy.EINVALID, "expect scheme ['unix', 'http', 'https'], got %s", uu.Scheme)
+	}
+
+	return c, nil
+}
+
+// newRequest returns a new HTTP request.
+func (c *Client) newRequest(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {
+	// Build new request with base URL.
+	req, err := http.NewRequest(method, c.URL+url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Default to JSON format.
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+
+	return req, nil
+}
+
+func (c *Client) Do(req *http.Request) (*http.Response, error) {
+	return c.client.Do(req)
+}
+
+// AllToEmpty convert `-` which means all to empty.
+func AllToEmpty(s string) string {
+	if s == "-" {
+		return ""
+	}
+	return s
+}
+
+// EmptyToAll covert empty to `-` which mean all.
+func EmptyToAll(s string) string {
+	if s == "" {
+		return "-"
+	}
+	return s
 }

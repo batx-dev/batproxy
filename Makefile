@@ -4,5 +4,5 @@ all:
 
 .PHONE: run
 run:
-	go run ./cmd/main.go \
+	go run ./cmd run \
 		--dsn .batproxy/batproxy.db

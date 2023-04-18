@@ -1,7 +1,12 @@
 package http
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/batx-dev/batproxy"
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
@@ -98,4 +103,97 @@ func (s *Server) deleteProxy(req *restful.Request, res *restful.Response) {
 	}
 
 	res.WriteHeader(http.StatusNoContent)
+}
+
+type ProxyService struct {
+	Client *Client
+}
+
+func NewProxyService(client *Client) *ProxyService {
+	return &ProxyService{Client: client}
+}
+
+func (s *ProxyService) CreateProxy(ctx context.Context, proxy *batproxy.Proxy, opts batproxy.CreateProxyOptions) error {
+	body, err := json.Marshal(proxy)
+	if err != nil {
+		return fmt.Errorf("json encode: %v", err)
+	}
+
+	query := url.Values{}
+	if err := encoder.Encode(opts, query); err != nil {
+		return fmt.Errorf("query encode: %v", err)
+	}
+
+	req, err := s.Client.newRequest(ctx, "POST",
+		"/api/v1beta1/proxies?"+query.Encode(),
+		bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("http new request: %v", err)
+	}
+
+	res, err := s.Client.Do(req)
+	if err != nil {
+		return err
+	} else if res.StatusCode != http.StatusCreated {
+		return parseResponseError(res)
+	}
+	defer res.Body.Close()
+
+	if err := json.NewDecoder(res.Body).Decode(proxy); err != nil {
+		return fmt.Errorf("json decode: %v", err)
+	}
+
+	return nil
+}
+
+func (s *ProxyService) ListProxies(ctx context.Context, opts batproxy.ListProxiesOptions) (*batproxy.ListProxiesPage, error) {
+	query := url.Values{}
+	err := encoder.Encode(opts, query)
+	if err != nil {
+		return nil, fmt.Errorf("query encode: %v", err)
+	}
+
+	req, err := s.Client.newRequest(ctx, "GET",
+		"/api/v1beta1/proxies?"+query.Encode(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("http new request: %v", err)
+	}
+
+	res, err := s.Client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("http do request: %v", err)
+	} else if res.StatusCode != http.StatusOK {
+		return nil, parseResponseError(res)
+	}
+	defer res.Body.Close()
+
+	var page batproxy.ListProxiesPage
+	if err := json.NewDecoder(res.Body).Decode(&page); err != nil {
+		return nil, fmt.Errorf("json decode: %v", err)
+	}
+
+	return &page, nil
+}
+
+func (s *ProxyService) UpdateProxy(req *restful.Request, res *restful.Response) {
+	panic("implement me")
+}
+
+func (s *ProxyService) DeleteProxy(ctx context.Context, proxyID string) error {
+	req, err := s.Client.newRequest(ctx, "DELETE",
+		"/api/v1beta1/proxies/"+proxyID+"?",
+		nil)
+	if err != nil {
+		return fmt.Errorf("http new request: %v", err)
+	}
+
+	res, err := s.Client.Do(req)
+	if err != nil {
+		return err
+	} else if res.StatusCode != http.StatusNoContent {
+		return parseResponseError(res)
+	}
+	defer res.Body.Close()
+
+	return nil
 }

@@ -1,3 +1,3 @@
 package batproxy
 
-var Version string
+var Version = "v0.0.1"

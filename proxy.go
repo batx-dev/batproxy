@@ -24,7 +24,7 @@ type Proxy struct {
 	// Optional.
 	PrivateKey string `json:"private_key,omitempty"`
 
-	// Passphrase Over SSH login private key password.
+	// Passphrase Over SSH login private key passphrase.
 	// Optional.
 	Passphrase string `json:"passphrase,omitempty"`
 
@@ -94,5 +94,5 @@ type ListProxiesOptions struct {
 type ProxyService interface {
 	CreateProxy(ctx context.Context, proxy *Proxy, opts CreateProxyOptions) error
 	ListProxies(ctx context.Context, opts ListProxiesOptions) (*ListProxiesPage, error)
-	DeleteProxy(ctx context.Context, uuid string) error
+	DeleteProxy(ctx context.Context, proxyID string) error
 }
