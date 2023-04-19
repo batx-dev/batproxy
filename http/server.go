@@ -4,7 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
-	"net/url"
+	"strings"
 	"time"
 
 	"github.com/batx-dev/batproxy"
@@ -75,12 +75,11 @@ func (s *Server) Open() (err error) {
 		s.managerServer = &http.Server{}
 		s.managerServer.Handler = c
 
-		listen, err := url.Parse(s.managerAddr)
-		if err != nil {
-			return batproxy.Errorf(batproxy.EINVALID, "manager %s address: %s", s.managerListen, err)
+		ss := strings.Split(s.managerAddr, "://")
+		if len(ss) < 2 {
+			return batproxy.Errorf(batproxy.EINVALID, "manager address: %s", s.managerListen)
 		}
-
-		if s.managerListen, err = net.Listen(listen.Scheme, listen.Host); err != nil {
+		if s.managerListen, err = net.Listen(ss[0], ss[1]); err != nil {
 			return err
 		}
 

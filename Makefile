@@ -1,5 +1,4 @@
 export GO111MODULE ?= on
-#export CGO_ENABLED=0
 
 GIT_VERSION := $(shell git describe --always --tags)
 BASE_PACKAGE_NAME := github.com/batx-dev/batproxy
@@ -21,7 +20,8 @@ build: fmt vet
 .PHONE: run
 run: fmt vet
 	go run ./cmd run \
-		--dsn .batproxy/batproxy.db
+		--dsn .batproxy/batproxy.db \
+		--listen unix://.batproxy/batproxy.sock
 
 # Build the docker image
 .PHONE: docker-build
