@@ -52,6 +52,17 @@ func createProxy(ctx context.Context, tx *Tx, proxy *batproxy.Proxy, opts batpro
 		return err
 	}
 
+	if i := strings.Index(proxy.Host, ":"); i == -1 {
+		proxy.Host += ":22"
+	}
+
+	if strings.HasPrefix(proxy.ID, "http://") {
+		proxy.ID = strings.TrimPrefix(proxy.ID, "http://")
+	}
+	if strings.HasPrefix(proxy.ID, "https://") {
+		proxy.ID = strings.TrimPrefix(proxy.ID, "https://")
+	}
+
 	if proxy.ID == "" {
 		proxy.ID = rand.String(8)
 
