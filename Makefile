@@ -3,7 +3,7 @@ export GO111MODULE ?= on
 GIT_VERSION := $(shell git describe --always --tags)
 BASE_PACKAGE_NAME := github.com/batx-dev/batproxy
 DEFAULT_LDFLAGS := "-X $(BASE_PACKAGE_NAME).Version=$(GIT_VERSION)"
-IMG := hub.docker.com/ashertz/batproxy:$(GIT_VERSION)
+IMG := docker.io/ashertz/batproxy:$(GIT_VERSION)
 
 # Run go fmt against code
 fmt:
