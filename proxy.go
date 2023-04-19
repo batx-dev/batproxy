@@ -59,7 +59,7 @@ func (p *Proxy) Validate() error {
 	}
 
 	if p.Node == "" || p.Port == 0 {
-		return fmt.Errorf("invalid proxy %s:%s", p.Node, p.Port)
+		return fmt.Errorf("invalid proxy destination %s:%d", p.Node, p.Port)
 	}
 
 	return nil

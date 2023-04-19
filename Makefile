@@ -18,7 +18,7 @@ build: fmt vet
 	go build -ldflags=$(DEFAULT_LDFLAGS) -o bin/batproxy ./cmd
 
 .PHONE: run
-run:
+run: fmt vet
 	go run ./cmd run \
 		--dsn .batproxy/batproxy.db
 
