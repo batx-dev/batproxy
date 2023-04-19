@@ -6,7 +6,7 @@ on:
       - v*
 
 env:
-  project: batproxy
+  PROJECT_NAME: batproxy
 
 
 jobs:
@@ -56,14 +56,14 @@ jobs:
       - name: package
         run: |
           [ -d examples ] || mkdir examples
-          mv bin/${project} examples/${project}${{ matrix.goexe }}
-          tar -zcvf ${project}_${{ matrix.goos }}_${{ matrix.goarch }}.tgz -C examples .
+          mv bin/${project} examples/${{ env.PROJECT_NAME }}${{ matrix.goexe }}
+          tar -zcvf ${{ env.PROJECT_NAME }}_${{ matrix.goos }}_${{ matrix.goarch }}.tgz -C examples .
       - name: upload
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release.outputs.upload_url }}
-          asset_path: ${project}_${{ matrix.goos }}_${{ matrix.goarch }}.tgz
-          asset_name: ${project}_${{ matrix.goos }}_${{ matrix.goarch }}.tgz
+          asset_path: ${{ env.PROJECT_NAME }}_${{ matrix.goos }}_${{ matrix.goarch }}.tgz
+          asset_name: ${{ env.PROJECT_NAME }}_${{ matrix.goos }}_${{ matrix.goarch }}.tgz
           asset_content_type: application/gzip

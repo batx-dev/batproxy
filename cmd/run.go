@@ -54,6 +54,12 @@ func RunCmd() *cli.Command {
 				},
 			},
 			&cli.StringFlag{
+				Name:    "suffix",
+				Usage:   "The proxy id default suffix",
+				Aliases: []string{"s"},
+				EnvVars: []string{"BATPROXY_PROXY_SUFFIX"},
+			},
+			&cli.StringFlag{
 				Name:    "dsn",
 				Usage:   "The database dsn ( file path if sqlite3 )",
 				Value:   "batproxy.db",
@@ -82,6 +88,7 @@ func RunAction(cCtx *cli.Context) error {
 	l := cCtx.String("listen")
 
 	dsn := cCtx.String("dsn")
+	suffix := cCtx.String("suffix")
 
 	server, err := http.NewServer(rl, l, logger.With("msg", "http"))
 	if err != nil {
@@ -93,7 +100,7 @@ func RunAction(cCtx *cli.Context) error {
 		return err
 	}
 
-	psvc := sql.NewProxy(db)
+	psvc := sql.NewProxy(db, sql.ProxyServiceOptions{Suffix: suffix})
 
 	server.ProxyService = psvc
 

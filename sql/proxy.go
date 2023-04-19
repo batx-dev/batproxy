@@ -14,10 +14,17 @@ const defaultPageSize = 1000
 
 type ProxyService struct {
 	db *DB
+
+	// suffix used for create proxy
+	suffix string
 }
 
-func NewProxy(db *DB) *ProxyService {
-	return &ProxyService{db: db}
+type ProxyServiceOptions struct {
+	Suffix string
+}
+
+func NewProxy(db *DB, opts ProxyServiceOptions) *ProxyService {
+	return &ProxyService{db: db, suffix: opts.Suffix}
 }
 
 var _ batproxy.ProxyService = (*ProxyService)(nil)
@@ -28,6 +35,10 @@ func (s *ProxyService) CreateProxy(ctx context.Context, proxy *batproxy.Proxy, o
 		return err
 	}
 	defer tx.Rollback()
+
+	if opts.Suffix == "" {
+		opts.Suffix = s.suffix
+	}
 
 	if err := createProxy(ctx, tx, proxy, opts); err != nil {
 		return err
@@ -41,11 +52,17 @@ func createProxy(ctx context.Context, tx *Tx, proxy *batproxy.Proxy, opts batpro
 		return err
 	}
 
-	proxy.ID = rand.String(8)
-	if opts.Suffix != "" {
-		proxy.ID += "." + opts.Suffix
+	if proxy.ID == "" {
+		proxy.ID = rand.String(8)
+
+		if opts.Suffix != "" {
+			if !strings.HasPrefix(opts.Suffix, ".") {
+				proxy.ID += "."
+			}
+
+			proxy.ID += opts.Suffix
+		}
 	}
-	//proxy.ID = "http://" + proxy.ID
 
 	proxy.CreateTime = tx.now
 	proxy.UpdateTime = proxy.CreateTime
