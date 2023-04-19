@@ -6,7 +6,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -93,16 +92,16 @@ func NewClient(u string) (*Client, error) {
 		client: http.DefaultClient,
 	}
 
-	uu, err := url.Parse(u)
-	if err != nil {
-		return nil, batproxy.Errorf(batproxy.EINVALID, "base url %s: %s", u, err)
+	ss := strings.Split(u, "://")
+	if len(ss) < 2 {
+		return nil, batproxy.Errorf(batproxy.EINVALID, "base url %s", u)
 	}
 
-	switch uu.Scheme {
+	switch ss[0] {
 	case "unix":
 		c.client.Transport = &http.Transport{
 			DialContext: func(ctx context.Context, network string, addr string) (net.Conn, error) {
-				return net.Dial(uu.Scheme, uu.Host)
+				return net.Dial(ss[0], ss[1])
 			},
 			ForceAttemptHTTP2:     true,
 			MaxIdleConns:          100,
@@ -115,7 +114,7 @@ func NewClient(u string) (*Client, error) {
 	case "http", "https":
 		c.URL = u
 	default:
-		return nil, batproxy.Errorf(batproxy.EINVALID, "expect scheme ['unix', 'http', 'https'], got %s", uu.Scheme)
+		return nil, batproxy.Errorf(batproxy.EINVALID, "expect scheme ['unix', 'http', 'https'], got %s", ss[0])
 	}
 
 	return c, nil

@@ -33,7 +33,7 @@ func unixSocketFlag() *cli.StringFlag {
 			ss := strings.Split(s, "://")
 
 			if len(ss) < 2 {
-				if err := c.Set("listen", fmt.Sprintf("unix://%s", s)); err != nil {
+				if err := c.Set("base-url", fmt.Sprintf("unix://%s", s)); err != nil {
 					return err
 				}
 
