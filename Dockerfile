@@ -9,13 +9,13 @@ COPY . .
 # Build
 ENV GOPROXY https://goproxy.cn
 ENV GO111MODULE on
-ENV CGO_ENABLED 0
+ENV CGO_ENABLED 1
 ENV GOOS linux
 ENV GOARCH amd64
 RUN go build -o bin/batproxy ./cmd
 
-FROM alpine:3.13
+FROM debian:buster-slim
 WORKDIR /
 COPY --from=builder /workspace/bin/batproxy .
 
-ENTRYPOINT ["/batproxy run"]
+ENTRYPOINT ["/batproxy", "run"]
