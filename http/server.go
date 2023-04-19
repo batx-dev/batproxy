@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/batx-dev/batproxy"
+	"github.com/batx-dev/batproxy/http/filter"
 	"github.com/batx-dev/batproxy/memo"
 	"github.com/batx-dev/batproxy/ssh"
 	"github.com/emicklei/go-restful/v3"
@@ -61,6 +62,7 @@ func (s *Server) Open() (err error) {
 	// listen manager reverseProxy address
 	{
 		c := restful.NewContainer()
+		c.Filter(filter.Logger(s.logger))
 		corev1beta1 := new(restful.WebService)
 		corev1beta1.Path("/api/v1beta1").
 			Consumes(restful.MIME_JSON).

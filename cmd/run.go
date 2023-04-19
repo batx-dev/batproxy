@@ -83,7 +83,7 @@ func RunAction(cCtx *cli.Context) error {
 
 	dsn := cCtx.String("dsn")
 
-	server, err := http.NewServer(rl, l, logger)
+	server, err := http.NewServer(rl, l, logger.With("msg", "http"))
 	if err != nil {
 		return err
 	}

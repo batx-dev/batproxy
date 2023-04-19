@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - v*
+
+env:
+  project: batproxy
+
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: psh ${{ github.ref }}
+          draft: false
+          prerelease: false
+  build:
+    needs: release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goarch: amd64
+            goos: linux
+          - goarch: amd64
+            goos: darwin
+          - goarch: arm64
+            goos: linux
+          - goarch: arm64
+            goos: darwin
+          - goarch: amd64
+            goos: windows
+            goexe: .exe
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.19
+      - name: build
+        run: make build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+      - name: package
+        run: |
+          [ -d examples ] || mkdir examples
+          mv bin/${project} examples/${project}${{ matrix.goexe }}
+          tar -zcvf ${project}_${{ matrix.goos }}_${{ matrix.goarch }}.tgz -C examples .
+      - name: upload
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: ${project}_${{ matrix.goos }}_${{ matrix.goarch }}.tgz
+          asset_name: ${project}_${{ matrix.goos }}_${{ matrix.goarch }}.tgz
+          asset_content_type: application/gzip
