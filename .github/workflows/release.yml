@@ -22,7 +22,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
-          release_name: psh ${{ github.ref }}
+          release_name: ${{ env.PROJECT_NAME }} ${{ github.ref }}
           draft: false
           prerelease: false
   build:
@@ -56,7 +56,7 @@ jobs:
       - name: package
         run: |
           [ -d examples ] || mkdir examples
-          mv bin/${project} examples/${{ env.PROJECT_NAME }}${{ matrix.goexe }}
+          mv bin/${{ env.PROJECT_NAME }} examples/${{ env.PROJECT_NAME }}${{ matrix.goexe }}
           tar -zcvf ${{ env.PROJECT_NAME }}_${{ matrix.goos }}_${{ matrix.goarch }}.tgz -C examples .
       - name: upload
         uses: actions/upload-release-asset@v1
