@@ -79,5 +79,5 @@ func (s *Server) newReverseProxy(req *http.Request) (*httputil.ReverseProxy, err
 
 func (s *Server) reverseProxyHandlerError(w http.ResponseWriter, req *http.Request, err error) {
 	s.logger.Error("reverse proxy", "req", req.Host, "err", err)
-	Error(w, req, err)
+	Error(w, req, batproxy.Errorf(batproxy.EBADGATEWAY, "%v", err))
 }

@@ -18,6 +18,7 @@ const (
 	ENOTIMPLEMENTED = "not_implemented"
 	EUNAUTHORIZED   = "unauthorized"
 	EFORBIDDEN      = "forbidden"
+	EBADGATEWAY     = "bad_gateway"
 )
 
 // Error represents an application-specific error. Application errors can be

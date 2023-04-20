@@ -9,9 +9,9 @@ import (
 
 	"github.com/batx-dev/batproxy"
 	"github.com/batx-dev/batproxy/http"
+	"github.com/batx-dev/batproxy/logger"
 	"github.com/batx-dev/batproxy/sql"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/exp/slog"
 )
 
 func RunCmd() *cli.Command {
@@ -79,18 +79,15 @@ func RunAction(cCtx *cli.Context) error {
 	signal.Notify(c, os.Interrupt)
 	go func() { <-c; cancel() }()
 
-	loggerOption := slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}
-	logger := slog.New(loggerOption.NewTextHandler(os.Stdout))
+	ll := logger.New(logger.Options{})
 
-	rl := cCtx.String("reverse-listen")
-	l := cCtx.String("listen")
+	reverseListen := cCtx.String("reverse-listen")
+	listen := cCtx.String("listen")
 
 	dsn := cCtx.String("dsn")
 	suffix := cCtx.String("suffix")
 
-	server, err := http.NewServer(rl, l, logger.With("msg", "http"))
+	server, err := http.NewServer(reverseListen, listen, ll.With("module", "http"))
 	if err != nil {
 		return err
 	}
@@ -100,7 +97,11 @@ func RunAction(cCtx *cli.Context) error {
 		return err
 	}
 
-	psvc := sql.NewProxy(db, sql.ProxyServiceOptions{Suffix: suffix})
+	var psvc batproxy.ProxyService
+	{
+		psvc = sql.NewProxy(db, sql.ProxyServiceOptions{Suffix: suffix})
+		psvc = logger.NewProxyService(ll.With("module", "logger"), psvc)
+	}
 
 	server.ProxyService = psvc
 
@@ -108,8 +109,9 @@ func RunAction(cCtx *cli.Context) error {
 		return err
 	}
 
-	logger.Info("main", "reverse-listen", rl)
-	logger.Info("main", "listen", l)
+	ll.Info("run", "module", "main", "reverse-listen", reverseListen)
+	ll.Info("run", "module", "main", "listen", listen)
+	ll.Info("run", "module", "main", "suffix", suffix)
 
 	<-ctx.Done()
 

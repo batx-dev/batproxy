@@ -59,6 +59,7 @@ var codes = map[string]int{
 	batproxy.EUNAUTHORIZED:   http.StatusUnauthorized,
 	batproxy.EINTERNAL:       http.StatusInternalServerError,
 	batproxy.EFORBIDDEN:      http.StatusForbidden,
+	batproxy.EBADGATEWAY:     http.StatusBadGateway,
 }
 
 // ErrorStatusCode returns the associated HTTP status code for a BatProxy error code.

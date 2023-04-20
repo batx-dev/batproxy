@@ -9,6 +9,7 @@ import (
 
 	"github.com/batx-dev/batproxy"
 	"github.com/batx-dev/batproxy/http/filter"
+	"github.com/batx-dev/batproxy/logger"
 	"github.com/batx-dev/batproxy/memo"
 	"github.com/batx-dev/batproxy/ssh"
 	"github.com/emicklei/go-restful/v3"
@@ -34,10 +35,10 @@ type Server struct {
 	ProxyService batproxy.ProxyService
 }
 
-func NewServer(reverseProxyAddr, managerAddr string, logger *slog.Logger) (*Server, error) {
+func NewServer(reverseProxyAddr, managerAddr string, l *slog.Logger) (*Server, error) {
 	return &Server{
-		memo:             memo.New(sshFunc(logger)),
-		logger:           logger,
+		memo:             memo.New(sshFunc(logger.New(logger.Options{}).With("module", "ssh"))),
+		logger:           l,
 		managerAddr:      managerAddr,
 		reverseProxyAddr: reverseProxyAddr,
 	}, nil
