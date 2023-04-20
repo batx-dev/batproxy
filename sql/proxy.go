@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/batx-dev/batproxy"
+	"github.com/mattn/go-sqlite3"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
@@ -49,7 +50,7 @@ func (s *ProxyService) CreateProxy(ctx context.Context, proxy *batproxy.Proxy, o
 
 func createProxy(ctx context.Context, tx *Tx, proxy *batproxy.Proxy, opts batproxy.CreateProxyOptions) error {
 	if err := proxy.Validate(); err != nil {
-		return err
+		return batproxy.Errorf(batproxy.EINVALID, "%v", err)
 	}
 
 	if i := strings.Index(proxy.Host, ":"); i == -1 {
@@ -105,6 +106,14 @@ func createProxy(ctx context.Context, tx *Tx, proxy *batproxy.Proxy, opts batpro
 		&proxy.UpdateTime,
 	)
 	if err != nil {
+		if drvErr, ok := err.(sqlite3.Error); ok {
+			if drvErr.Code == sqlite3.ErrConstraint &&
+				drvErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+				return batproxy.Errorf(batproxy.ECONFLICT, "'%s' already exists", proxy.ID)
+			}
+		}
+
+		// TODO: support mysql
 		return err
 	}
 
