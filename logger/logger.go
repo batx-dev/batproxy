@@ -1,54 +1,37 @@
 package logger
 
 import (
-	"github.com/go-logr/logr"
-	"github.com/go-logr/zapr"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
+	"os"
+
+	"golang.org/x/exp/slog"
 )
 
-type Logger struct {
-	LogLevel   int8
-	Encoding   string
-	EncodeTime zapcore.TimeEncoder
+type Options struct {
+	// slog.Logger set for return a source parent logger
+	*slog.Logger
+
+	// slog.HandlerOptions set for slog options
+	slog.HandlerOptions
+
+	JsonHandler bool
 }
 
-func NewLogger(logLevel int8, encoding string, encodeTime zapcore.TimeEncoder) Logger {
-	switch encoding {
-	case "json":
-	case "console":
-	default:
-		encoding = "console"
+func New(opts Options) *slog.Logger {
+	if opts.Logger != nil {
+		return opts.Logger
 	}
 
-	return Logger{
-		LogLevel:   logLevel,
-		Encoding:   encoding,
-		EncodeTime: encodeTime,
-	}
-}
-
-func (l *Logger) Build() logr.Logger {
-	zp := zap.NewProductionConfig()
-
-	// set the log format ( json or console)
-	zp.Encoding = l.Encoding
-
-	// close logger stacktrace
-	zp.EncoderConfig.StacktraceKey = ""
-
-	// set the log time format
-	zp.EncoderConfig.EncodeTime = l.EncodeTime
-
-	if l.LogLevel > 0 {
-		l.LogLevel = 0 - l.LogLevel
-	}
-	zp.Level = zap.NewAtomicLevelAt(zapcore.Level(l.LogLevel))
-
-	z, err := zp.Build()
-	if err != nil {
-		panic(err)
+	if &opts.HandlerOptions == nil {
+		opts.HandlerOptions = slog.HandlerOptions{
+			AddSource:   true,
+			Level:       slog.LevelDebug,
+			ReplaceAttr: nil,
+		}
 	}
 
-	return zapr.NewLogger(z)
+	if opts.JsonHandler {
+		return slog.New(opts.NewJSONHandler(os.Stdout))
+	}
+
+	return slog.New(opts.NewTextHandler(os.Stdout))
 }
