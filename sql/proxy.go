@@ -144,7 +144,7 @@ func listProxies(ctx context.Context, tx *Tx, opts batproxy.ListProxiesOptions) 
 	var pageToken int
 	if len(opts.PageToken) > 0 {
 		if pageToken, err = strconv.Atoi(opts.PageToken); err != nil {
-			return nil, fmt.Errorf("PageToken is invalid")
+			return nil, batproxy.Errorf(batproxy.EINVALID, "page_token is invalid")
 		}
 	}
 	pageSize := opts.PageSize
@@ -171,7 +171,7 @@ func listProxies(ctx context.Context, tx *Tx, opts batproxy.ListProxiesOptions) 
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("select 't_bat_proxy': %v", err)
 	}
 	defer rows.Close()
 
@@ -190,7 +190,7 @@ func listProxies(ctx context.Context, tx *Tx, opts batproxy.ListProxiesOptions) 
 			(*NullTime)(&proxy.CreateTime),
 			(*NullTime)(&proxy.UpdateTime),
 		); err != nil {
-			return nil, fmt.Errorf("sacn t_bat_proxy: %v", err)
+			return nil, fmt.Errorf("sacn 't_bat_proxy': %v", err)
 		}
 		proxies = append(proxies, proxy)
 	}
