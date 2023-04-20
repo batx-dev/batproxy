@@ -17,18 +17,18 @@ func (s *Server) proxyService(ws *restful.WebService) {
 	tags := []string{"proxies"}
 
 	ws.Route(ws.POST("/proxies").To(s.createProxy).
-		Doc("create a reverseProxy").
+		Doc("create a reverse proxy rule").
 		Metadata(restfulspec.KeyOpenAPITags, tags).
 		Reads(batproxy.Proxy{}).
 		Writes(batproxy.Proxy{}).
 		Returns(201, "Created", batproxy.Proxy{}).
-		Returns(409, "Conflict", error.Error))
+		Returns(409, "Conflict", batproxy.Error{}))
 
 	ws.Route(ws.GET("/proxies").To(s.listProxies).
 		Doc("list proxies").
-		Param(ws.QueryParameter("proxy_id", "The uuid of reverseProxy").
+		Param(ws.QueryParameter("proxy_id", "the proxy id (name) of reverse proxy").
 			DataType("string")).
-		Param(ws.QueryParameter("page_size", "Sets the maximum number of proxies to be returned").
+		Param(ws.QueryParameter("page_size", "sets the maximum number of proxies to be returned").
 			DataType("integer").DefaultValue("1000")).
 		Param(ws.QueryParameter("page_token", "page_token may be filled in with the next_page_token from a previous list call").
 			DataType("string")).
@@ -38,8 +38,8 @@ func (s *Server) proxyService(ws *restful.WebService) {
 
 	ws.Route(ws.DELETE("/proxies/{proxy_id}").To(s.deleteProxy).
 		// docs
-		Doc("delete a reverseProxy").
-		Param(ws.PathParameter("proxy_id", "The id of the reverseProxy").
+		Doc("delete a reverse proxy").
+		Param(ws.PathParameter("proxy_id", "the id of the reverse proxy").
 			DataType("string").Required(true)).
 		Metadata(restfulspec.KeyOpenAPITags, tags).
 		Returns(204, "NoContent", nil))
@@ -47,14 +47,15 @@ func (s *Server) proxyService(ws *restful.WebService) {
 
 func (s *Server) createProxy(req *restful.Request, res *restful.Response) {
 	opts := batproxy.CreateProxyOptions{}
+	decoder.IgnoreUnknownKeys(true)
 	if err := decoder.Decode(&opts, req.Request.URL.Query()); err != nil {
-		Error(res.ResponseWriter, req.Request, err)
+		Error(res.ResponseWriter, req.Request, batproxy.Errorf(batproxy.EINVALID, "%v", err))
 		return
 	}
 
 	proxy := &batproxy.Proxy{}
 	if err := req.ReadEntity(proxy); err != nil {
-		Error(res.ResponseWriter, req.Request, err)
+		Error(res.ResponseWriter, req.Request, batproxy.Errorf(batproxy.EINVALID, "%v", err))
 		return
 	}
 
@@ -75,8 +76,9 @@ func (s *Server) createProxy(req *restful.Request, res *restful.Response) {
 
 func (s *Server) listProxies(req *restful.Request, res *restful.Response) {
 	opts := batproxy.ListProxiesOptions{}
+	decoder.IgnoreUnknownKeys(true)
 	if err := decoder.Decode(&opts, req.Request.URL.Query()); err != nil {
-		Error(res.ResponseWriter, req.Request, err)
+		Error(res.ResponseWriter, req.Request, batproxy.Errorf(batproxy.EINVALID, "%v", err))
 		return
 	}
 
@@ -116,12 +118,12 @@ func NewProxyService(client *Client) *ProxyService {
 func (s *ProxyService) CreateProxy(ctx context.Context, proxy *batproxy.Proxy, opts batproxy.CreateProxyOptions) error {
 	body, err := json.Marshal(proxy)
 	if err != nil {
-		return fmt.Errorf("json encode: %v", err)
+		return batproxy.Errorf(batproxy.EINVALID, "json encode: %v", err)
 	}
 
 	query := url.Values{}
 	if err := encoder.Encode(opts, query); err != nil {
-		return fmt.Errorf("query encode: %v", err)
+		return batproxy.Errorf(batproxy.EINVALID, "query encode: %v", err)
 	}
 
 	req, err := s.Client.newRequest(ctx, "POST",
@@ -150,7 +152,7 @@ func (s *ProxyService) ListProxies(ctx context.Context, opts batproxy.ListProxie
 	query := url.Values{}
 	err := encoder.Encode(opts, query)
 	if err != nil {
-		return nil, fmt.Errorf("query encode: %v", err)
+		return nil, batproxy.Errorf(batproxy.EINVALID, "query encode: %v", err)
 	}
 
 	req, err := s.Client.newRequest(ctx, "GET",
