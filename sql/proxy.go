@@ -243,6 +243,9 @@ func (s *ProxyService) DeleteProxy(ctx context.Context, proxyID string) error {
 }
 
 func deleteProxy(ctx context.Context, tx *Tx, proxyID string) error {
+	if proxyID == "" {
+		return batproxy.Errorf(batproxy.EINVALID, "field proxy id is required")
+	}
 	_, err := tx.ExecContext(ctx, `
 		DELETE FROM "t_bat_proxy"
 		WHERE proxy_id = ?
