@@ -1,6 +1,11 @@
 # Manager Proxy API
 
+## Use by unix socket
+
+* `curl` add `--unix-socket` option
+
 ## Create a reverse proxy rule
+
 ```shell
 $ curl -X POST --header "Content-Type: application/json" \
     http://localhost:18888/api/v1beta1/proxies -d \
