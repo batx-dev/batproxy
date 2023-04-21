@@ -43,6 +43,11 @@ func unixSocketFlag() *cli.StringFlag {
 			switch ss[0] {
 			case "unix", "http", "https":
 				return nil
+			case "tcp", "udp":
+				if err := c.Set("base-url", fmt.Sprintf("http://%s", s)); err != nil {
+					return err
+				}
+				return nil
 			default:
 				return batproxy.Errorf(batproxy.EINVALID, "expect scheme ['unix', 'http', 'https'], got %s", ss[0])
 			}
