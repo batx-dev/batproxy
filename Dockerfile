@@ -1,5 +1,5 @@
 # Build the binary
-FROM golang:1.19 as builder
+FROM golang:1.20 as builder
 
 WORKDIR /workspace
 
@@ -14,8 +14,9 @@ ENV GOOS linux
 ENV GOARCH amd64
 RUN go build -o bin/batproxy ./cmd
 
-FROM debian:buster-slim
+FROM debian:bullseye-slim
 WORKDIR /
 COPY --from=builder /workspace/bin/batproxy .
 
-ENTRYPOINT ["/batproxy", "run"]
+ENTRYPOINT ["/batproxy"]
+CMD ["run"]
