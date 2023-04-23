@@ -24,7 +24,7 @@ type ProxyServiceOptions struct {
 	Suffix string
 }
 
-func NewProxy(db *DB, opts ProxyServiceOptions) *ProxyService {
+func NewProxyService(db *DB, opts ProxyServiceOptions) *ProxyService {
 	return &ProxyService{db: db, suffix: opts.Suffix}
 }
 

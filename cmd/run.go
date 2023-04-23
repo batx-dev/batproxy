@@ -6,8 +6,10 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 
 	"github.com/batx-dev/batproxy"
+	"github.com/batx-dev/batproxy/cache"
 	"github.com/batx-dev/batproxy/http"
 	"github.com/batx-dev/batproxy/logger"
 	"github.com/batx-dev/batproxy/sql"
@@ -66,6 +68,13 @@ func RunCmd() *cli.Command {
 				Aliases: []string{"d"},
 				EnvVars: []string{"BATPROXY_DSN"},
 			},
+			&cli.StringFlag{
+				Name:    "expiration",
+				Usage:   "The time of proxy rule expiration",
+				Value:   "15s",
+				Aliases: []string{"e"},
+				EnvVars: []string{"BATPROXY_EXPIRATION"},
+			},
 		},
 		Action: RunAction,
 	}
@@ -85,7 +94,10 @@ func RunAction(cCtx *cli.Context) error {
 	listen := cCtx.String("listen")
 
 	dsn := cCtx.String("dsn")
+
 	suffix := cCtx.String("suffix")
+
+	expiration := cCtx.String("expiration")
 
 	server, err := http.NewServer(reverseListen, listen, ll.With("module", "http"))
 	if err != nil {
@@ -99,8 +111,13 @@ func RunAction(cCtx *cli.Context) error {
 
 	var psvc batproxy.ProxyService
 	{
-		psvc = sql.NewProxy(db, sql.ProxyServiceOptions{Suffix: suffix})
-		psvc = logger.NewProxyService(ll.With("module", "logger"), psvc)
+		duration, err := time.ParseDuration(expiration)
+		if err != nil {
+			return err
+		}
+		psvc = sql.NewProxyService(db, sql.ProxyServiceOptions{Suffix: suffix})
+		psvc = cache.NewProxyService(psvc, cache.ProxyServiceOptions{ProxyExpiration: duration})
+		psvc = logger.NewProxyService(psvc, ll.With("module", "logger"))
 	}
 
 	server.ProxyService = psvc
@@ -112,6 +129,7 @@ func RunAction(cCtx *cli.Context) error {
 	ll.Info("run", "module", "main", "reverse-listen", reverseListen)
 	ll.Info("run", "module", "main", "listen", listen)
 	ll.Info("run", "module", "main", "suffix", suffix)
+	ll.Info("run", "module", "main", "expiration", expiration)
 
 	<-ctx.Done()
 

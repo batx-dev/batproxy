@@ -13,7 +13,7 @@ type ProxyService struct {
 	next   batproxy.ProxyService
 }
 
-func NewProxyService(logger *slog.Logger, next batproxy.ProxyService) batproxy.ProxyService {
+func NewProxyService(next batproxy.ProxyService, logger *slog.Logger) batproxy.ProxyService {
 	return &ProxyService{
 		logger: logger,
 		next:   next,
