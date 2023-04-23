@@ -4,44 +4,26 @@ on: push
 
 env:
   PROJECT_NAME: batproxy
+  BASE_PACKAGE_NAME: github.com/batx-dev/batproxy
 
 
 jobs:
-  release:
-    runs-on: ubuntu-20.04
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-    steps:
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ env.PROJECT_NAME }} ${{ github.ref }}
-          draft: false
-          prerelease: false
   build:
-    needs: release
     runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        include:
-          - goarch: amd64
-            goos: linux
-          - goarch: amd64
-            goos: darwin
-          - goarch: arm64
-            goos: darwin
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Go
-        uses: actions/setup-go@v4
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Build
+        uses: crazy-max/ghaction-xgo@v2
         with:
-          go-version: 1.19
-      - name: build
-        run: make build
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
+          xgo_version: latest
+          go_version: 1.19
+          dest: build
+          prefix: ${{ env.PROJECT_NAME }}
+          targets: windows/amd64,linux/amd64,linux/arm64,darwin/arm64
+          v: true
+          x: false
+          race: false
+          ldflags: -X ${{ env.BASE_PACKAGE_NAME }}.Version=${{ github.GITHUB_REF_NAME }}
+          buildmode: default
+          trimpath: true
