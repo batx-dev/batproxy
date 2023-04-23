@@ -44,7 +44,7 @@ func unixSocketFlag() *cli.StringFlag {
 			case "unix", "http", "https":
 				return nil
 			case "tcp", "udp":
-				if err := c.Set("base-url", fmt.Sprintf("http://%s", s)); err != nil {
+				if err := c.Set("base-url", fmt.Sprintf("http://%s", ss[1])); err != nil {
 					return err
 				}
 				return nil
