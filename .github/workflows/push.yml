@@ -6,7 +6,6 @@ env:
   PROJECT_NAME: batproxy
   BASE_PACKAGE_NAME: github.com/batx-dev/batproxy
 
-
 jobs:
   build:
     runs-on: ubuntu-20.04
