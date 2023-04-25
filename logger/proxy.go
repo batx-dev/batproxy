@@ -30,7 +30,7 @@ func (s *ProxyService) CreateProxy(ctx context.Context, proxy *batproxy.Proxy, o
 			"node", proxy.Node,
 			"port", proxy.Port,
 		)
-		logErr(logger, err)
+		logErr(logger, "CreateProxy", err)
 	}(time.Now())
 	return s.next.CreateProxy(ctx, proxy, opts)
 }
@@ -49,7 +49,7 @@ func (s *ProxyService) ListProxies(ctx context.Context, opts batproxy.ListProxie
 				return 0
 			}(),
 		)
-		logErr(logger, err)
+		logErr(logger, "ListProxies", err)
 	}(time.Now())
 	return s.next.ListProxies(ctx, opts)
 }
@@ -60,7 +60,7 @@ func (s *ProxyService) DeleteProxy(ctx context.Context, proxyID string) (err err
 			"took", time.Since(begin),
 			"proxy_id", proxyID,
 		)
-		logErr(logger, err)
+		logErr(logger, "DeleteProxy", err)
 	}(time.Now())
 	return s.next.DeleteProxy(ctx, proxyID)
 }

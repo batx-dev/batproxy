@@ -43,13 +43,15 @@ func New(opts Options) *Logger {
 	return &Logger{slog.New(opts.NewTextHandler(os.Stdout))}
 }
 
-func logErr(logger *slog.Logger, err error) {
+func logErr(logger *slog.Logger, msg string, err error) {
 	code, message := batproxy.ErrorCode(err), batproxy.ErrorMessage(err)
 	switch code {
 	case "":
-		logger.Info("")
+		logger.Info(msg)
+	case batproxy.EINTERNAL:
+		logger.Error(msg, "err", err)
 	default:
-		logger.Error("", "code", code, "err", message)
+		logger.Error(msg, "code", code, "err", message)
 	}
 
 }
