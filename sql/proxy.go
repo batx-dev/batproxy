@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/batx-dev/batproxy"
+	"github.com/go-sql-driver/mysql"
 	"github.com/mattn/go-sqlite3"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
@@ -108,12 +109,19 @@ func createProxy(ctx context.Context, tx *Tx, proxy *batproxy.Proxy, opts batpro
 	if err != nil {
 		if drvErr, ok := err.(sqlite3.Error); ok {
 			if drvErr.Code == sqlite3.ErrConstraint &&
+				// ErrConstraint means duplicate entry error.
 				drvErr.ExtendedCode == sqlite3.ErrConstraintUnique {
 				return batproxy.Errorf(batproxy.ECONFLICT, "'%s' already exists", proxy.ID)
 			}
 		}
 
-		// TODO: support mysql
+		if drvErr, ok := err.(*mysql.MySQLError); ok {
+			// 1062 means duplicate entry error.
+			if drvErr.Number == 1062 {
+				return batproxy.Errorf(batproxy.ECONFLICT, "'%s' already exists", proxy.ID)
+			}
+		}
+
 		return err
 	}
 
