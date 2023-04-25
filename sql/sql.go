@@ -5,9 +5,11 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
+	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -35,12 +37,25 @@ func NewDB(dsn string) *DB {
 }
 
 func (db *DB) Open() (err error) {
-
 	if db.DSN == "" {
 		return fmt.Errorf("dsn required")
 	}
 
-	if db.db, err = sql.Open("sqlite3", db.DSN); err != nil {
+	dve := "sqlite3"
+	dsn := ""
+	ss := strings.SplitN(db.DSN, "://", 2)
+
+	switch len(ss) {
+	case 1:
+		dsn = ss[0]
+	case 2:
+		dve = ss[0]
+		dsn = ss[1]
+	default:
+		return fmt.Errorf("invalid dsn: %s", db.DSN)
+	}
+
+	if db.db, err = sql.Open(dve, dsn); err != nil {
 		return err
 	}
 

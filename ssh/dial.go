@@ -59,7 +59,7 @@ func dialFunc(c *Client) memo.Func[key, *ssh.Client] {
 			go func() {
 				time.Sleep(15 * time.Second)
 				cleanup()
-				c.Logger.Error("dial", "cleanup ssh cache", "key", key.String(), "err", err)
+				c.Logger.Error("cleanup ssh cache", "key", key.String(), "err", err)
 			}()
 			return nil, batproxy.Errorf(batproxy.EINTERNAL, "dial to %s", key.String())
 		}

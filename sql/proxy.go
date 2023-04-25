@@ -80,7 +80,7 @@ func createProxy(ctx context.Context, tx *Tx, proxy *batproxy.Proxy, opts batpro
 	proxy.UpdateTime = proxy.CreateTime
 
 	_, err := tx.ExecContext(ctx, `
-		INSERT INTO "t_bat_proxy" (
+		INSERT INTO t_bat_proxy (
 			proxy_id, 
 		    user, 
 		    host,
@@ -164,7 +164,7 @@ func listProxies(ctx context.Context, tx *Tx, opts batproxy.ListProxiesOptions) 
 		    port,
 		    create_time,
 		    update_time
-		FROM "t_bat_proxy" WHERE `+strings.Join(where, " AND ")+`
+		FROM t_bat_proxy WHERE `+strings.Join(where, " AND ")+`
 		ORDER BY id ASC
 		`+FormatLimitOffset(pageSize, pageToken),
 		args...,
@@ -180,15 +180,15 @@ func listProxies(ctx context.Context, tx *Tx, opts batproxy.ListProxiesOptions) 
 		proxy := &batproxy.Proxy{}
 		if err = rows.Scan(
 			&proxy.ID,
-			(*NullString)(&proxy.User),
-			(*NullString)(&proxy.Host),
-			(*NullString)(&proxy.PrivateKey),
-			(*NullString)(&proxy.Passphrase),
-			(*NullString)(&proxy.Password),
-			(*NullString)(&proxy.Node),
+			&proxy.User,
+			&proxy.Host,
+			&proxy.PrivateKey,
+			&proxy.Passphrase,
+			&proxy.Password,
+			&proxy.Node,
 			&proxy.Port,
-			(*NullTime)(&proxy.CreateTime),
-			(*NullTime)(&proxy.UpdateTime),
+			&proxy.CreateTime,
+			&proxy.UpdateTime,
 		); err != nil {
 			return nil, fmt.Errorf("sacn 't_bat_proxy': %v", err)
 		}
@@ -247,7 +247,7 @@ func deleteProxy(ctx context.Context, tx *Tx, proxyID string) error {
 		return batproxy.Errorf(batproxy.EINVALID, "field proxy id is required")
 	}
 	_, err := tx.ExecContext(ctx, `
-		DELETE FROM "t_bat_proxy"
+		DELETE FROM t_bat_proxy
 		WHERE proxy_id = ?
 	`, proxyID)
 	return err
