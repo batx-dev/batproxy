@@ -28,5 +28,5 @@ A HTTP reverse proxy, but connecting to the backend through SSH.
 
 ## Checklist
 - [X] Sqlite
-- [ ] Mysql
+- [X] Mysql
 
