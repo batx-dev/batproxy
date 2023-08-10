@@ -6,6 +6,7 @@ require (
 	github.com/Code-Hex/go-generics-cache v1.3.0
 	github.com/emicklei/go-restful-openapi/v2 v2.9.1
 	github.com/emicklei/go-restful/v3 v3.10.2
+	github.com/felixge/httpsnoop v1.0.3
 	github.com/go-logr/logr v1.2.4
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/gorilla/schema v1.2.0

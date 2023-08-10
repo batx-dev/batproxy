@@ -155,3 +155,27 @@ func EmptyToAll(s string) string {
 	}
 	return s
 }
+
+var (
+	xForwardedFor = http.CanonicalHeaderKey("X-Forwarded-For")
+	xRealIP       = http.CanonicalHeaderKey("X-Real-IP")
+)
+
+func realIP(r *http.Request) string {
+	if xrip := r.Header.Get(xRealIP); xrip != "" {
+		return xrip
+	} else if xff := r.Header.Get(xForwardedFor); xff != "" {
+		i := strings.Index(xff, ", ")
+		if i == -1 {
+			i = len(xff)
+		}
+		return xff[:i]
+	} else {
+		host, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			return r.RemoteAddr
+		} else {
+			return host
+		}
+	}
+}

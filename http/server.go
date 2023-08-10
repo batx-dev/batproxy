@@ -4,15 +4,16 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/batx-dev/batproxy"
-	"github.com/batx-dev/batproxy/http/filter"
 	"github.com/batx-dev/batproxy/logger"
 	"github.com/batx-dev/batproxy/memo"
 	"github.com/batx-dev/batproxy/ssh"
 	"github.com/emicklei/go-restful/v3"
+	"github.com/felixge/httpsnoop"
 	"golang.org/x/exp/slog"
 )
 
@@ -63,7 +64,6 @@ func (s *Server) Open() (err error) {
 	// listen manager reverseProxy address
 	{
 		c := restful.NewContainer()
-		c.Filter(filter.Logger(s.logger))
 		corev1beta1 := new(restful.WebService)
 		corev1beta1.Path("/api/v1beta1").
 			Consumes(restful.MIME_JSON).
@@ -74,7 +74,7 @@ func (s *Server) Open() (err error) {
 		c.Add(corev1beta1)
 
 		s.managerServer = &http.Server{}
-		s.managerServer.Handler = c
+		s.managerServer.Handler = wrapperHTTP(c)
 
 		ss := strings.Split(s.managerAddr, "://")
 		if len(ss) < 2 {
@@ -105,4 +105,25 @@ func (s *Server) Close() error {
 	}
 
 	return nil
+}
+
+// wrapperHTTP used to wrap http request for print
+func wrapperHTTP(h http.Handler) http.Handler {
+	slogger := slog.New(slog.NewTextHandler(os.Stdout))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		m := httpsnoop.CaptureMetrics(h, w, r)
+		defer func() {
+			slogger.Info("",
+				"method", r.Method,
+				"url", r.URL,
+				"proto", r.Proto,
+				"user-agent", r.UserAgent(),
+				"remote", realIP(r),
+				"referer", r.Referer(),
+				"status", m.Code,
+				"size", m.Written,
+				"lat-ms", m.Duration.Milliseconds(),
+			)
+		}()
+	})
 }
